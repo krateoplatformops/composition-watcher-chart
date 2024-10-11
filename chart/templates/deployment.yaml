@@ -1,99 +1,58 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chart.fullname" . }}-controller-manager
+  name: {{ include "composition-watcher.fullname" . }}
   labels:
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: composition-watcher
-    app.kubernetes.io/part-of: composition-watcher
-    control-plane: controller-manager
-  {{- include "chart.labels" . | nindent 4 }}
+    {{- include "composition-watcher.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.controllerManager.replicas }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
-      control-plane: controller-manager
-    {{- include "chart.selectorLabels" . | nindent 6 }}
+      {{- include "composition-watcher.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      labels:
-        control-plane: controller-manager
-      {{- include "chart.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
       annotations:
-        kubectl.kubernetes.io/default-container: manager
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "composition-watcher.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
-      containers:
-      - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=0
-        env:
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: "cluster.local"
-        image: {{ .Values.proxy.image.repository }}:{{ .Values.proxy.image.tag
-          | default .Chart.AppVersion }}
-        name: kube-rbac-proxy
-        imagePullPolicy: {{ .Values.proxy.imagePullPolicy }}
-        ports:
-        - containerPort: 8443
-          name: https
-          protocol: TCP
-        resources: {{- toYaml .Values.proxy.resources | nindent
-          10 }}
-        {{- with .Values.proxy.volumeMounts }}
-        volumeMounts:
-          {{- toYaml . | nindent 10 }}
-        {{- end }}
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-      - args:
-        - --health-probe-bind-address=:8081
-        - --metrics-bind-address=127.0.0.1:8080
-        - --leader-elect
-        command:
-        - /manager
-        env:
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        - name: RECONCILE_REQUEUE_AFTER
-          value: {{ quote .Values.requeueAfter }}
-        image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag
-          | default .Chart.AppVersion }}
-        imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy }}
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        name: manager
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        {{- with .Values.controllerManager.volumeMounts }}
-        volumeMounts:
-          {{- toYaml . | nindent 10 }}
-        {{- end }}
-        resources: {{- toYaml .Values.controllerManager.resources
-          | nindent 10 }}
-        securityContext: 
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-      imagePullSecrets: {{- toYaml .Values.imagePullSecrets
-          | nindent 6 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "composition-watcher.serviceAccountName" . }}
       securityContext:
-        runAsNonRoot: true
-      serviceAccountName: {{ include "chart.fullname" . }}-controller-manager
-      terminationGracePeriodSeconds: 10
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "composition-watcher.fullname" . }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "composition-watcher.fullname" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
