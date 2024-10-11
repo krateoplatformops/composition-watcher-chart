@@ -90,3 +90,5 @@ affinity: {}
 
 env:
   RESOURCE_TREE_HANDLER_URL: http://resource-tree-handler.krateo-system.svc.cluster.local:8085
+  POLLING_INTERVAL: 300
+  MAX_RECONCILE_RATE: 1
