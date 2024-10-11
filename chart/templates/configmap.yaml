@@ -6,5 +6,5 @@ metadata:
   {{- include "composition-watcher.labels" . | nindent 4 }}
 data:
   RESOURCE_TREE_HANDLER_URL: {{ .Values.env.RESOURCE_TREE_HANDLER_URL }}
-  POLLING_INTERVAL: {{ .Values.env.POLLING_INTERVAL }}
-  MAX_RECONCILE_RATE: {{ .Values.env.MAX_RECONCILE_RATE }}
+  POLLING_INTERVAL: "{{ .Values.env.POLLING_INTERVAL }}"
+  MAX_RECONCILE_RATE: "{{ .Values.env.MAX_RECONCILE_RATE }}"
