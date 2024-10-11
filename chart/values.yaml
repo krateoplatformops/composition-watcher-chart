@@ -87,3 +87,6 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+env:
+  RESOURCE_TREE_HANDLER_URL: http://resource-tree-handler.krateo-system.svc.cluster.local:8085
